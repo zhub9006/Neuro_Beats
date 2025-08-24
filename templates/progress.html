@@ -1,0 +1,641 @@
+
+{% extends "base.html" %}
+
+{% block title %}Progress Report - NeuroBeat{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Header -->
+    <div class="col-12 mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2>Progress Report</h2>
+                <p class="text-muted">{{ patient_profile.user.first_name }} {{ patient_profile.user.last_name }} - {{ patient_profile.condition.replace('_', ' ').title() }}</p>
+            </div>
+            <div>
+                <a href="{% if user.user_type == 'patient' %}{{ url_for('patient_dashboard') }}{% else %}{{ url_for('clinician_dashboard') }}{% endif %}" class="btn btn-secondary">
+                    <i data-feather="arrow-left" class="me-2"></i>
+                    Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="col-12 mb-4">
+        <div class="row g-4">
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i data-feather="activity" class="mb-2" style="width: 32px; height: 32px;"></i>
+                        <h4>{{ sessions|length }}</h4>
+                        <p class="text-muted mb-0">Total Sessions</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i data-feather="clock" class="mb-2" style="width: 32px; height: 32px;"></i>
+                        <h4>{{ (sessions|sum(attribute='duration_seconds') // 60) or 0 }}</h4>
+                        <p class="text-muted mb-0">Total Minutes</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i data-feather="target" class="mb-2" style="width: 32px; height: 32px;"></i>
+                        <h4>{{ ((sessions|selectattr('accuracy_score')|sum(attribute='accuracy_score')) / (sessions|selectattr('accuracy_score')|list|length))|round|int if sessions|selectattr('accuracy_score')|list else 0 }}%</h4>
+                        <p class="text-muted mb-0">Avg Accuracy</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i data-feather="trending-up" class="mb-2" style="width: 32px; height: 32px;"></i>
+                        <h4>{{ sessions[-1].final_bpm|round|int if sessions and sessions[-1].final_bpm else (patient_profile.baseline_cadence|round|int if patient_profile.baseline_cadence else 'N/A') }}</h4>
+                        <p class="text-muted mb-0">Current BPM</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Charts -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="trending-up" class="me-2"></i>
+                    Progress Over Time
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="progressChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Details - Training Specific Windows -->
+    <div class="col-lg-4 mb-4">
+        <!-- Training Selection Tabs -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="layers" class="me-2"></i>
+                    Training Progress Details
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="nav nav-pills nav-justified flex-column flex-lg-row" id="training-tabs" role="tablist">
+                    {% if patient_profile.condition == 'stroke' %}
+                        <button class="nav-link active mb-2 mb-lg-0" id="gait-tab" data-bs-toggle="pill" data-bs-target="#gait-progress" type="button" role="tab">
+                            <i data-feather="activity" style="width: 16px; height: 16px;"></i> Gait
+                        </button>
+                        <button class="nav-link mb-2 mb-lg-0" id="upper-limb-tab" data-bs-toggle="pill" data-bs-target="#upper-limb-progress" type="button" role="tab">
+                            <i data-feather="move" style="width: 16px; height: 16px;"></i> Upper Limb
+                        </button>
+                        <button class="nav-link mb-2 mb-lg-0" id="melodic-tab" data-bs-toggle="pill" data-bs-target="#melodic-progress" type="button" role="tab">
+                            <i data-feather="music" style="width: 16px; height: 16px;"></i> Melodic
+                        </button>
+                        <button class="nav-link" id="speech-tab" data-bs-toggle="pill" data-bs-target="#speech-progress" type="button" role="tab">
+                            <i data-feather="mic" style="width: 16px; height: 16px;"></i> Speech
+                        </button>
+                    {% else %}
+                        <button class="nav-link active mb-2 mb-lg-0" id="gait-tab" data-bs-toggle="pill" data-bs-target="#gait-progress" type="button" role="tab">
+                            <i data-feather="activity" style="width: 16px; height: 16px;"></i> Gait
+                        </button>
+                        <button class="nav-link mb-2 mb-lg-0" id="tapping-tab" data-bs-toggle="pill" data-bs-target="#tapping-progress" type="button" role="tab">
+                            <i data-feather="move" style="width: 16px; height: 16px;"></i> Tapping
+                        </button>
+                        <button class="nav-link mb-2 mb-lg-0" id="speech-tab" data-bs-toggle="pill" data-bs-target="#speech-progress" type="button" role="tab">
+                            <i data-feather="mic" style="width: 16px; height: 16px;"></i> Speech
+                        </button>
+                        <button class="nav-link" id="balance-tab" data-bs-toggle="pill" data-bs-target="#balance-progress" type="button" role="tab">
+                            <i data-feather="target" style="width: 16px; height: 16px;"></i> Balance
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Training Progress Content -->
+        <div class="card">
+            <div class="card-body">
+                <div class="tab-content" id="training-progress-content">
+                    <!-- Gait Training Progress -->
+                    <div class="tab-pane fade show active" id="gait-progress" role="tabpanel">
+                        <h6 class="text-primary mb-3 fw-bold">
+                            <i data-feather="activity" class="me-2" style="width: 18px; height: 18px;"></i>
+                            Gait Training Progress
+                        </h6>
+                        {% set gait_assessment = patient_profile.assessments|selectattr('assessment_type', 'equalto', 'gait')|first %}
+                        {% set gait_sessions = sessions|selectattr('session_type', 'equalto', 'gait_trainer')|list %}
+                        
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2 fw-bold">Baseline Assessment</h6>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-medium">Cadence:</span>
+                                <strong class="text-primary">{{ gait_assessment.measured_value|round(1) if gait_assessment else 'N/A' }} steps/min</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-medium">Target:</span>
+                                <strong class="text-success">{{ patient_profile.target_cadence|round(1) if patient_profile.target_cadence else 'N/A' }} steps/min</strong>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2 fw-bold">Progress Stats</h6>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-medium">Total Sessions:</span>
+                                <strong class="text-info">{{ gait_sessions|length }}</strong>
+                            </div>
+                            {% if gait_sessions %}
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-medium">Avg Accuracy:</span>
+                                <strong class="text-warning">{{ (gait_sessions|map(attribute='accuracy_score')|select|sum / gait_sessions|map(attribute='accuracy_score')|select|list|length)|round(1) if gait_sessions|map(attribute='accuracy_score')|select|list else 'N/A' }}%</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-medium">Latest BPM:</span>
+                                <strong class="text-primary">{{ gait_sessions[-1].final_bpm|round(1) if gait_sessions[-1].final_bpm else gait_sessions[-1].initial_bpm|round(1) }}</strong>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        {% if gait_assessment %}
+                            {% set is_normal = gait_assessment.measured_value >= 100 and gait_assessment.measured_value <= 140 %}
+                            <div class="alert alert-{{ 'success' if is_normal else 'warning' }} p-3">
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="{{ 'check-circle' if is_normal else 'alert-triangle' }}" style="width: 20px; height: 20px;" class="me-2"></i>
+                                    <div>
+                                        <strong>Status: {{ 'Normal Range' if is_normal else 'Needs Practice' }}</strong>
+                                        <br><small class="fw-medium">Normal: 100-140 steps/min</small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    {% if patient_profile.condition == 'stroke' %}
+                    <!-- Upper Limb Training Progress -->
+                    <div class="tab-pane fade" id="upper-limb-progress" role="tabpanel">
+                        <h6 class="text-primary mb-3 fw-bold">
+                            <i data-feather="move" class="me-2" style="width: 18px; height: 18px;"></i>
+                            Upper Limb Training Progress
+                        </h6>
+                        {% set upper_limb_assessment = patient_profile.assessments|selectattr('assessment_type', 'equalto', 'upper_limb')|first %}
+                        {% set upper_limb_sessions = sessions|selectattr('session_type', 'equalto', 'upper_limb_motor')|list %}
+                        
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2 fw-bold">Baseline Assessment</h6>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-medium">FMA-UE Score:</span>
+                                <strong class="text-primary">{{ upper_limb_assessment.measured_value|round(1) if upper_limb_assessment else 'N/A' }}/66</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-medium">Affected Side:</span>
+                                <strong class="text-info">{{ patient_profile.stroke_affected_side|title if patient_profile.stroke_affected_side else 'N/A' }}</strong>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2 fw-bold">Progress Stats</h6>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-medium">Total Sessions:</span>
+                                <strong class="text-info">{{ upper_limb_sessions|length }}</strong>
+                            </div>
+                            {% if upper_limb_sessions %}
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-medium">Avg Accuracy:</span>
+                                <strong class="text-warning">{{ (upper_limb_sessions|map(attribute='accuracy_score')|select|sum / upper_limb_sessions|map(attribute='accuracy_score')|select|list|length)|round(1) if upper_limb_sessions|map(attribute='accuracy_score')|select|list else 'N/A' }}%</strong>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        {% if upper_limb_assessment %}
+                            {% set is_normal = upper_limb_assessment.measured_value >= 50 %}
+                            <div class="alert alert-{{ 'success' if is_normal else 'warning' }} p-3">
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="{{ 'check-circle' if is_normal else 'alert-triangle' }}" style="width: 20px; height: 20px;" class="me-2"></i>
+                                    <div>
+                                        <strong>Status: {{ 'Good Function' if is_normal else 'Needs Practice' }}</strong>
+                                        <br><small class="fw-medium">Normal: 50-66 (good function)</small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Melodic Intonation Progress -->
+                    <div class="tab-pane fade" id="melodic-progress" role="tabpanel">
+                        <h6 class="text-primary mb-3 fw-bold">
+                            <i data-feather="music" class="me-2" style="width: 18px; height: 18px;"></i>
+                            Melodic Intonation Progress
+                        </h6>
+                        {% set melodic_assessment = patient_profile.assessments|selectattr('assessment_type', 'equalto', 'melodic')|first %}
+                        {% set melodic_sessions = sessions|selectattr('session_type', 'equalto', 'melodic_intonation')|list %}
+                        
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2 fw-bold">Baseline Assessment</h6>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-medium">MIT Score:</span>
+                                <strong class="text-primary">{{ melodic_assessment.measured_value|round(1) if melodic_assessment else 'N/A' }}/20</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-medium">Aphasia Type:</span>
+                                <strong class="text-info">{{ patient_profile.aphasia_type|title if patient_profile.aphasia_type else 'N/A' }}</strong>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2 fw-bold">Progress Stats</h6>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-medium">Total Sessions:</span>
+                                <strong class="text-info">{{ melodic_sessions|length }}</strong>
+                            </div>
+                            {% if melodic_sessions %}
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-medium">Avg Accuracy:</span>
+                                <strong class="text-warning">{{ (melodic_sessions|map(attribute='accuracy_score')|select|sum / melodic_sessions|map(attribute='accuracy_score')|select|list|length)|round(1) if melodic_sessions|map(attribute='accuracy_score')|select|list else 'N/A' }}%</strong>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        {% if melodic_assessment %}
+                            {% set is_normal = melodic_assessment.measured_value >= 15 %}
+                            <div class="alert alert-{{ 'success' if is_normal else 'warning' }} p-3">
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="{{ 'check-circle' if is_normal else 'alert-triangle' }}" style="width: 20px; height: 20px;" class="me-2"></i>
+                                    <div>
+                                        <strong>Status: {{ 'Good Response' if is_normal else 'Needs Practice' }}</strong>
+                                        <br><small class="fw-medium">Normal: 15-20 (good response)</small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Speech Rhythm Progress -->
+                    <div class="tab-pane fade" id="speech-progress" role="tabpanel">
+                        <h6 class="text-primary mb-3 fw-bold">
+                            <i data-feather="mic" class="me-2" style="width: 18px; height: 18px;"></i>
+                            Speech Rhythm Progress
+                        </h6>
+                        {% set speech_assessment = patient_profile.assessments|selectattr('assessment_type', 'equalto', 'speech')|first %}
+                        {% set speech_sessions = sessions|selectattr('session_type', 'equalto', 'speech_rhythm')|list %}
+                        
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2 fw-bold">Baseline Assessment</h6>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-medium">Speech Rate:</span>
+                                <strong class="text-primary">{{ speech_assessment.measured_value|round(1) if speech_assessment else 'N/A' }} syl/min</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-medium">Target Rate:</span>
+                                <strong class="text-success">{{ patient_profile.target_speech_rate|round(1) if patient_profile.target_speech_rate else 'N/A' }} syl/min</strong>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2 fw-bold">Progress Stats</h6>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-medium">Total Sessions:</span>
+                                <strong class="text-info">{{ speech_sessions|length }}</strong>
+                            </div>
+                            {% if speech_sessions %}
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-medium">Avg Accuracy:</span>
+                                <strong class="text-warning">{{ (speech_sessions|map(attribute='accuracy_score')|select|sum / speech_sessions|map(attribute='accuracy_score')|select|list|length)|round(1) if speech_sessions|map(attribute='accuracy_score')|select|list else 'N/A' }}%</strong>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        {% if speech_assessment %}
+                            {% set is_normal = speech_assessment.measured_value >= 180 and speech_assessment.measured_value <= 220 %}
+                            <div class="alert alert-{{ 'success' if is_normal else 'warning' }} p-3">
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="{{ 'check-circle' if is_normal else 'alert-triangle' }}" style="width: 20px; height: 20px;" class="me-2"></i>
+                                    <div>
+                                        <strong>Status: {{ 'Normal Range' if is_normal else 'Needs Practice' }}</strong>
+                                        <br><small class="fw-medium">Normal: 180-220 syllables/min</small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    {% else %}
+                    <!-- Finger Tapping Progress (Parkinson's) -->
+                    <div class="tab-pane fade" id="tapping-progress" role="tabpanel">
+                        <h6 class="text-primary mb-3 fw-bold">
+                            <i data-feather="move" class="me-2" style="width: 18px; height: 18px;"></i>
+                            Finger Tapping Progress
+                        </h6>
+                        {% set tapping_assessment = patient_profile.assessments|selectattr('assessment_type', 'equalto', 'tapping')|first %}
+                        {% set tapping_sessions = sessions|selectattr('session_type', 'equalto', 'finger_tapping')|list %}
+                        
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2 fw-bold">Baseline Assessment</h6>
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-medium">Tapping Speed:</span>
+                                <strong class="text-primary">{{ tapping_assessment.measured_value|round(1) if tapping_assessment else 'N/A' }} taps/min</strong>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2 fw-bold">Progress Stats</h6>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-medium">Total Sessions:</span>
+                                <strong class="text-info">{{ tapping_sessions|length }}</strong>
+                            </div>
+                            {% if tapping_sessions %}
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-medium">Avg Accuracy:</span>
+                                <strong class="text-warning">{{ (tapping_sessions|map(attribute='accuracy_score')|select|sum / tapping_sessions|map(attribute='accuracy_score')|select|list|length)|round(1) if tapping_sessions|map(attribute='accuracy_score')|select|list else 'N/A' }}%</strong>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        {% if tapping_assessment %}
+                            {% set is_normal = tapping_assessment.measured_value >= 150 and tapping_assessment.measured_value <= 250 %}
+                            <div class="alert alert-{{ 'success' if is_normal else 'warning' }} p-3">
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="{{ 'check-circle' if is_normal else 'alert-triangle' }}" style="width: 20px; height: 20px;" class="me-2"></i>
+                                    <div>
+                                        <strong>Status: {{ 'Normal Range' if is_normal else 'Needs Practice' }}</strong>
+                                        <br><small class="fw-medium">Normal: 150-250 taps/min</small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Speech Rhythm Progress (Parkinson's) -->
+                    <div class="tab-pane fade" id="speech-progress" role="tabpanel">
+                        <h6 class="text-primary mb-3 fw-bold">
+                            <i data-feather="mic" class="me-2" style="width: 18px; height: 18px;"></i>
+                            Speech Rhythm Progress
+                        </h6>
+                        {% set speech_assessment = patient_profile.assessments|selectattr('assessment_type', 'equalto', 'speech')|first %}
+                        {% set speech_sessions = sessions|selectattr('session_type', 'equalto', 'speech_rhythm')|list %}
+                        
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2 fw-bold">Baseline Assessment</h6>
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-medium">Speech Rate:</span>
+                                <strong class="text-primary">{{ speech_assessment.measured_value|round(1) if speech_assessment else 'N/A' }} syl/min</strong>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2 fw-bold">Progress Stats</h6>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-medium">Total Sessions:</span>
+                                <strong class="text-info">{{ speech_sessions|length }}</strong>
+                            </div>
+                            {% if speech_sessions %}
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-medium">Avg Accuracy:</span>
+                                <strong class="text-warning">{{ (speech_sessions|map(attribute='accuracy_score')|select|sum / speech_sessions|map(attribute='accuracy_score')|select|list|length)|round(1) if speech_sessions|map(attribute='accuracy_score')|select|list else 'N/A' }}%</strong>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        {% if speech_assessment %}
+                            {% set is_normal = speech_assessment.measured_value >= 180 and speech_assessment.measured_value <= 220 %}
+                            <div class="alert alert-{{ 'success' if is_normal else 'warning' }} p-3">
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="{{ 'check-circle' if is_normal else 'alert-triangle' }}" style="width: 20px; height: 20px;" class="me-2"></i>
+                                    <div>
+                                        <strong>Status: {{ 'Normal Range' if is_normal else 'Needs Practice' }}</strong>
+                                        <br><small class="fw-medium">Normal: 180-220 syllables/min</small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Balance Training Progress (Parkinson's) -->
+                    <div class="tab-pane fade" id="balance-progress" role="tabpanel">
+                        <h6 class="text-primary mb-3 fw-bold">
+                            <i data-feather="target" class="me-2" style="width: 18px; height: 18px;"></i>
+                            Balance Training Progress
+                        </h6>
+                        {% set balance_assessment = patient_profile.assessments|selectattr('assessment_type', 'equalto', 'balance')|first %}
+                        {% set balance_sessions = sessions|selectattr('session_type', 'equalto', 'balance_training')|list %}
+                        
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2 fw-bold">Baseline Assessment</h6>
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-medium">Berg Balance:</span>
+                                <strong class="text-primary">{{ balance_assessment.measured_value|round(1) if balance_assessment else 'N/A' }}/56</strong>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2 fw-bold">Progress Stats</h6>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-medium">Total Sessions:</span>
+                                <strong class="text-info">{{ balance_sessions|length }}</strong>
+                            </div>
+                            {% if balance_sessions %}
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-medium">Avg Accuracy:</span>
+                                <strong class="text-warning">{{ (balance_sessions|map(attribute='accuracy_score')|select|sum / balance_sessions|map(attribute='accuracy_score')|select|list|length)|round(1) if balance_sessions|map(attribute='accuracy_score')|select|list else 'N/A' }}%</strong>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        {% if balance_assessment %}
+                            {% set is_normal = balance_assessment.measured_value >= 45 %}
+                            <div class="alert alert-{{ 'success' if is_normal else 'warning' }} p-3">
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="{{ 'check-circle' if is_normal else 'alert-triangle' }}" style="width: 20px; height: 20px;" class="me-2"></i>
+                                    <div>
+                                        <strong>Status: {{ 'Low Fall Risk' if is_normal else 'High Fall Risk' }}</strong>
+                                        <br><small class="fw-medium">Normal: 45-56 (low fall risk)</small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session History -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="list" class="me-2"></i>
+                    Session History
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if sessions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date & Time</th>
+                                    <th>Type</th>
+                                    <th>Duration</th>
+                                    <th>BPM Range</th>
+                                    <th>Accuracy</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in sessions|reverse %}
+                                <tr>
+                                    <td>{{ session.start_time.strftime('%m/%d/%Y %I:%M %p') }}</td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ session.session_type.replace('_', ' ').title() }}</span>
+                                    </td>
+                                    <td>{{ (session.duration_seconds // 60) if session.duration_seconds else 'N/A' }} min</td>
+                                    <td>
+                                        {{ session.initial_bpm|round|int }} 
+                                        {% if session.final_bpm and session.final_bpm != session.initial_bpm %}
+                                            → {{ session.final_bpm|round|int }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if session.accuracy_score %}
+                                            <span class="badge {% if session.accuracy_score >= 80 %}bg-success{% elif session.accuracy_score >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
+                                                {{ session.accuracy_score|round|int }}%
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if session.notes %}
+                                            <small class="text-muted">{{ session.notes[:50] }}{% if session.notes|length > 50 %}...{% endif %}</small>
+                                        {% else %}
+                                            <small class="text-muted">No notes</small>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i data-feather="calendar" class="mb-3" style="width: 48px; height: 48px; opacity: 0.5;"></i>
+                        <p class="text-muted">No sessions recorded yet. Start your first therapy session!</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+// Initialize progress chart
+document.addEventListener('DOMContentLoaded', function() {
+    loadProgressData();
+    feather.replace();
+});
+
+async function loadProgressData() {
+    try {
+        const response = await fetch(`/api/progress/{{ patient_profile.id }}`);
+        if (response.ok) {
+            const data = await response.json();
+            createProgressChart(data);
+        }
+    } catch (error) {
+        console.error('Error loading progress data:', error);
+    }
+}
+
+function createProgressChart(data) {
+    const ctx = document.getElementById('progressChart').getContext('2d');
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.dates,
+            datasets: [
+                {
+                    label: 'Accuracy Score (%)',
+                    data: data.accuracy_scores,
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'BPM',
+                    data: data.bpm_values,
+                    borderColor: '#007bff',
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                    yAxisID: 'y1'
+                },
+                ...(data.baseline_cadence ? [{
+                    label: 'Baseline BPM',
+                    data: new Array(data.dates.length).fill(data.baseline_cadence),
+                    borderColor: '#6c757d',
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    yAxisID: 'y1'
+                }] : []),
+                ...(data.target_cadence ? [{
+                    label: 'Target BPM',
+                    data: new Array(data.dates.length).fill(data.target_cadence),
+                    borderColor: '#dc3545',
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    yAxisID: 'y1'
+                }] : [])
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Date'
+                    }
+                },
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Accuracy (%)'
+                    },
+                    min: 0,
+                    max: 100
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'BPM'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}
