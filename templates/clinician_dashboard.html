@@ -8,7 +8,7 @@
     <div class="col-12 mb-4">
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <h2>Clinician Dashboard</h2>
+                <h2 class="hero-title">Clinician Dashboard</h2>
                 <p class="text-muted">Dr. {{ user.first_name }} {{ user.last_name }}</p>
             </div>
             <div>
@@ -30,8 +30,8 @@
             <div class="col-md-3">
                 <div class="card">
                     <div class="card-body text-center">
-                        <i data-feather="users" class="mb-2" style="width: 32px; height: 32px;"></i>
-                        <h4>{{ patients|length }}</h4>
+                        <i data-feather="users" class="mb-2" style="width: 32px; height: 32px; color: var(--nb-purple);"></i>
+                        <h4 style="color: var(--nb-purple);">{{ patients|length }}</h4>
                         <p class="text-muted mb-0">Active Patients</p>
                     </div>
                 </div>
@@ -39,7 +39,7 @@
             <div class="col-md-3">
                 <div class="card">
                     <div class="card-body text-center">
-                        <i data-feather="activity" class="mb-2" style="width: 32px; height: 32px;"></i>
+                        <i data-feather="activity" class="mb-2" style="width: 32px; height: 32px; color: var(--nb-cyan);"></i>
                         <h4>
                             {% set total_sessions = 0 %}
                             {% for patient in patients %}
@@ -54,7 +54,7 @@
             <div class="col-md-3">
                 <div class="card">
                     <div class="card-body text-center">
-                        <i data-feather="user-check" class="mb-2" style="width: 32px; height: 32px;"></i>
+                        <i data-feather="user-check" class="mb-2" style="width: 32px; height: 32px; color: var(--nb-emerald);"></i>
                         <h4>{{ unassigned_patients|length }}</h4>
                         <p class="text-muted mb-0">Unassigned</p>
                     </div>
@@ -63,7 +63,7 @@
             <div class="col-md-3">
                 <div class="card">
                     <div class="card-body text-center">
-                        <i data-feather="trending-up" class="mb-2" style="width: 32px; height: 32px;"></i>
+                        <i data-feather="trending-up" class="mb-2" style="width: 32px; height: 32px; color: var(--nb-amber);"></i>
                         <h4>{{ clinician_profile.specialization or 'General' }}</h4>
                         <p class="text-muted mb-0">Specialization</p>
                     </div>

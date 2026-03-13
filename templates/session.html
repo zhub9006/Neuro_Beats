@@ -42,10 +42,10 @@
             <div class="card-body text-center">
                 <!-- Session Status -->
                 <div id="sessionStatus" class="mb-4">
-                    <div class="row">
+                    <div class="row g-3">
                         <div class="col-3">
-                            <div class="border rounded p-3">
-                                <h5 id="currentBPM">{{ therapy_session.initial_bpm|round|int }}</h5>
+                            <div class="session-stat-card" style="border-color: var(--nb-purple);">
+                                <h5 id="currentBPM" style="color: var(--nb-purple);">{{ therapy_session.initial_bpm|round|int }}</h5>
                                 <small class="text-muted">
                                     {% if therapy_session.session_type == 'speech_rhythm' %}
                                         Current SPM
@@ -56,8 +56,8 @@
                             </div>
                         </div>
                         <div class="col-3">
-                            <div class="border rounded p-3">
-                                <h5 id="targetBPM">{{ therapy_session.target_bpm|round|int }}</h5>
+                            <div class="session-stat-card" style="border-color: var(--nb-cyan);">
+                                <h5 id="targetBPM" style="color: var(--nb-cyan);">{{ therapy_session.target_bpm|round|int }}</h5>
                                 <small class="text-muted">
                                     {% if therapy_session.session_type == 'speech_rhythm' %}
                                         Target SPM
@@ -68,16 +68,16 @@
                             </div>
                         </div>
                         <div class="col-3">
-                            <div class="border rounded p-3">
-                                <h5 id="accuracy">0%</h5>
+                            <div class="session-stat-card" style="border-color: var(--nb-emerald);">
+                                <h5 id="accuracy" style="color: var(--nb-emerald);">0%</h5>
                                 <small class="text-muted">Sync Accuracy</small>
                             </div>
                         </div>
                         <div class="col-3">
-                            <div class="border rounded p-3">
+                            <div class="session-stat-card" style="border-color: var(--nb-amber);">
                                 <h5 id="voiceStatus">
                                     <i data-feather="mic-off" id="micIcon"></i>
-                                    <span id="voiceIndicator">Silent</span>
+                                    <span id="voiceIndicator" style="font-size: 0.85rem;">Silent</span>
                                 </h5>
                                 <small class="text-muted">Voice Status</small>
                             </div>
@@ -86,10 +86,10 @@
                 </div>
 
                 <!-- Microphone Permission -->
-                <div id="micPermission" class="alert alert-warning" style="display: none;">
+                <div id="micPermission" class="alert alert-warning" style="display: none; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); color: var(--nb-amber);">
                     <i data-feather="alert-circle" class="me-2"></i>
                     <strong>Microphone Required:</strong> 
-                    Allow microphone access for AI-powered performance tracking and automatic beat adjustment.
+                    Allow microphone access for AI-powered performance tracking.
                     <button id="requestMicBtn" class="btn btn-sm btn-primary ms-2">Enable Microphone</button>
                 </div>
 
@@ -97,16 +97,15 @@
                 <div class="mb-4">
                     <div class="row">
                         <div class="col-8">
-                            <div id="beatVisualizer" class="mx-auto" style="width: 200px; height: 200px; border: 4px solid #dee2e6; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.1s ease;">
-                                <div id="beatIndicator" style="width: 80px; height: 80px; background: #007bff; border-radius: 50%; transform: scale(0.8); transition: transform 0.1s ease;">
-                                </div>
+                            <div id="beatVisualizer" class="mx-auto beat-visualizer">
+                                <div id="beatIndicator" class="beat-indicator"></div>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="text-center">
-                                <h6>Voice Level</h6>
-                                <div id="voiceVolumeMeter" style="width: 100px; height: 200px; border: 2px solid #dee2e6; border-radius: 10px; background: linear-gradient(to top, #28a745 0%, #ffc107 70%, #dc3545 100%); position: relative; overflow: hidden; margin: 0 auto;">
-                                    <div id="voiceVolumeIndicator" style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(255,255,255,0.8); height: 100%; transition: height 0.1s ease;"></div>
+                                <h6 class="text-muted">Voice Level</h6>
+                                <div id="voiceVolumeMeter" class="voice-meter">
+                                    <div id="voiceVolumeIndicator" class="voice-meter-fill"></div>
                                 </div>
                                 <small class="text-muted mt-2 d-block">Speak/Move to sync</small>
                             </div>
@@ -144,12 +143,12 @@
 
                 <!-- Session Timer -->
                 <div class="mb-3">
-                    <h5 id="sessionTimer">00:00</h5>
+                    <h5 id="sessionTimer" class="session-timer">00:00</h5>
                     <small class="text-muted">Session Duration</small>
                 </div>
 
                 <!-- Instructions -->
-                <div class="alert alert-info">
+                <div class="alert alert-info" style="background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); color: rgba(255,255,255,0.85);">
                     <i data-feather="info" class="me-2"></i>
                     <strong>Instructions:</strong> 
                     {% if therapy_session.session_type == 'speech_rhythm' %}
@@ -182,8 +181,8 @@
                 </h5>
             </div>
             <div class="card-body">
-                <div class="progress mb-3">
-                    <div id="accuracyProgress" class="progress-bar" role="progressbar" style="width: 0%">
+                <div class="progress mb-3" style="background: rgba(255,255,255,0.05); height: 24px; border-radius: 12px;">
+                    <div id="accuracyProgress" class="progress-bar" role="progressbar" style="width: 0%; border-radius: 12px;">
                         0% Accuracy
                     </div>
                 </div>
@@ -192,6 +191,69 @@
         </div>
     </div>
 </div>
+
+<style>
+.session-stat-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+    border-left: 3px solid;
+}
+.session-stat-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    transform: translateY(-2px);
+}
+.beat-visualizer {
+    width: 200px;
+    height: 200px;
+    border: 4px solid rgba(124, 58, 237, 0.4);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.1s ease;
+    box-shadow: 0 0 30px rgba(124, 58, 237, 0.15);
+}
+.beat-indicator {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--nb-purple), var(--nb-cyan));
+    border-radius: 50%;
+    transform: scale(0.8);
+    transition: transform 0.1s ease;
+    box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
+}
+.voice-meter {
+    width: 100px;
+    height: 200px;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    background: linear-gradient(to top, var(--nb-emerald) 0%, var(--nb-amber) 70%, #ef4444 100%);
+    position: relative;
+    overflow: hidden;
+    margin: 0 auto;
+}
+.voice-meter-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(10, 10, 26, 0.85);
+    height: 100%;
+    transition: height 0.1s ease;
+}
+.session-timer {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--nb-purple), var(--nb-cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-family: 'Inter', monospace;
+}
+</style>
 
 <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
 <script src="{{ url_for('static', filename='js/session.js') }}"></script>
@@ -224,12 +286,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof initializeAudio === 'function') {
         initializeAudio().then((success) => {
             if (success) {
-                // Set session type for audio engine
                 if (audioEngine && typeof audioEngine.setSessionType === 'function') {
                     audioEngine.setSessionType(sessionData.sessionType);
                 }
-                
-                // Check microphone permission status
                 checkMicrophonePermission();
             }
         });
@@ -241,10 +300,7 @@ document.addEventListener('DOMContentLoaded', function() {
 async function checkMicrophonePermission() {
     try {
         const permission = await navigator.permissions.query({ name: 'microphone' });
-        
-        if (permission.state === 'denied') {
-            showMicrophonePermissionAlert();
-        } else if (permission.state === 'prompt') {
+        if (permission.state === 'denied' || permission.state === 'prompt') {
             showMicrophonePermissionAlert();
         } else {
             console.log('Microphone permission granted');
@@ -263,8 +319,6 @@ function showMicrophonePermissionAlert() {
         try {
             await navigator.mediaDevices.getUserMedia({ audio: true });
             alertDiv.style.display = 'none';
-            
-            // Reinitialize audio engine with microphone
             if (audioEngine) {
                 await audioEngine.initializeVoiceDetection();
             }
@@ -275,7 +329,6 @@ function showMicrophonePermissionAlert() {
     });
 }
 
-// Voice monitoring update function
 function updateVoiceStatus() {
     if (!audioEngine) return;
     
@@ -283,26 +336,23 @@ function updateVoiceStatus() {
     const voiceVolume = audioEngine.getVoiceVolume();
     const voiceSyncAccuracy = audioEngine.getVoiceSyncAccuracy();
     
-    // Update voice status indicator
     const micIcon = document.getElementById('micIcon');
     const voiceIndicator = document.getElementById('voiceIndicator');
     
     if (isVoiceActive) {
         micIcon.setAttribute('data-feather', 'mic');
         voiceIndicator.textContent = 'Active';
-        voiceIndicator.style.color = '#28a745';
+        voiceIndicator.style.color = 'var(--nb-emerald)';
     } else {
         micIcon.setAttribute('data-feather', 'mic-off');
         voiceIndicator.textContent = 'Silent';
-        voiceIndicator.style.color = '#6c757d';
+        voiceIndicator.style.color = 'rgba(255,255,255,0.4)';
     }
     
-    // Update voice volume meter
     const volumeIndicator = document.getElementById('voiceVolumeIndicator');
-    const volumePercentage = Math.min(100, voiceVolume * 1000); // Scale volume
+    const volumePercentage = Math.min(100, voiceVolume * 1000);
     volumeIndicator.style.height = `${100 - volumePercentage}%`;
     
-    // Update sync accuracy with voice data if available
     if (voiceSyncAccuracy > 0) {
         sessionData.accuracyScore = Math.max(sessionData.accuracyScore, voiceSyncAccuracy);
         updateAccuracyDisplay(sessionData.accuracyScore);
@@ -320,18 +370,34 @@ function initializeChart() {
             datasets: [{
                 label: 'BPM',
                 data: [],
-                borderColor: '#007bff',
-                backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                tension: 0.4
+                borderColor: '#7c3aed',
+                backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                tension: 0.4,
+                borderWidth: 2,
+                pointBackgroundColor: '#7c3aed',
+                pointBorderColor: '#7c3aed',
+                pointRadius: 3,
+                fill: true
             }]
         },
         options: {
             responsive: true,
+            plugins: {
+                legend: {
+                    labels: { color: 'rgba(255,255,255,0.7)' }
+                }
+            },
             scales: {
                 y: {
                     beginAtZero: false,
                     min: 40,
-                    max: 120
+                    max: 120,
+                    ticks: { color: 'rgba(255,255,255,0.5)' },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                },
+                x: {
+                    ticks: { color: 'rgba(255,255,255,0.5)' },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
                 }
             }
         }
@@ -342,20 +408,17 @@ function startSession() {
     sessionData.isRunning = true;
     sessionData.startTime = new Date();
     
-    // Update UI
     document.getElementById('startBtn').style.display = 'none';
     document.getElementById('pauseBtn').style.display = 'inline-block';
     document.getElementById('stopBtn').style.display = 'inline-block';
     
-    // Start audio
     if (typeof startAudioEngine === 'function') {
         startAudioEngine(sessionData.currentBPM);
     }
     
-    // Start timers
     sessionTimer = setInterval(updateTimer, 1000);
-    updateInterval = setInterval(updateSession, 5000); // Update every 5 seconds
-    voiceUpdateInterval = setInterval(updateVoiceStatus, 100); // Update voice status every 100ms
+    updateInterval = setInterval(updateSession, 5000);
+    voiceUpdateInterval = setInterval(updateVoiceStatus, 100);
     
     console.log('Session started');
 }
@@ -363,17 +426,14 @@ function startSession() {
 function pauseSession() {
     sessionData.isRunning = false;
     
-    // Update UI
     document.getElementById('startBtn').style.display = 'inline-block';
     document.getElementById('pauseBtn').style.display = 'none';
     document.getElementById('startBtn').innerHTML = '<i data-feather="play" class="me-2"></i>Resume';
     
-    // Pause audio
     if (typeof stopAudioEngine === 'function') {
         stopAudioEngine();
     }
     
-    // Clear timers
     clearInterval(sessionTimer);
     clearInterval(updateInterval);
     if (voiceUpdateInterval) {
@@ -387,7 +447,6 @@ function pauseSession() {
 function stopSession() {
     sessionData.isRunning = false;
     
-    // Stop audio and timers
     if (typeof stopAudioEngine === 'function') {
         stopAudioEngine();
     }
@@ -397,11 +456,9 @@ function stopSession() {
         clearInterval(voiceUpdateInterval);
     }
     
-    // Calculate final metrics
     const now = new Date();
     sessionData.duration = Math.floor((now - sessionData.startTime) / 1000);
     
-    // Complete session on server
     completeSessionOnServer();
 }
 
@@ -447,29 +504,24 @@ function updateTimer() {
 async function updateSession() {
     if (!sessionData.isRunning) return;
     
-    // Get real accuracy from voice detection if available, otherwise simulate
     let currentAccuracy;
     if (audioEngine && audioEngine.voiceDetectionActive) {
         const voiceAccuracy = audioEngine.getVoiceSyncAccuracy();
         currentAccuracy = voiceAccuracy > 0 ? voiceAccuracy : Math.random() * 30 + 70;
     } else {
-        currentAccuracy = Math.random() * 30 + 70; // Fallback simulation
+        currentAccuracy = Math.random() * 30 + 70;
     }
     
     sessionData.accuracyScore = currentAccuracy;
     
-    // AI-powered BPM adjustment based on performance
     let suggestedBPM = sessionData.currentBPM;
     if (sessionData.aiAdjustmentEnabled) {
         if (currentAccuracy > 85) {
-            // High accuracy - gradually increase BPM towards target
             const progressToTarget = (sessionData.targetBPM - sessionData.currentBPM) * 0.1;
             suggestedBPM = Math.min(sessionData.targetBPM, sessionData.currentBPM + progressToTarget);
         } else if (currentAccuracy < 60) {
-            // Low accuracy - slow down to help patient
             suggestedBPM = Math.max(sessionData.initialBPM * 0.8, sessionData.currentBPM - 2);
         }
-        // Medium accuracy (60-85%) - maintain current BPM
     }
     
     try {
@@ -490,7 +542,6 @@ async function updateSession() {
         if (response.ok) {
             const data = await response.json();
             
-            // Update BPM if adjusted by server or AI suggestion
             const newBPM = data.adjusted_bpm || suggestedBPM;
             if (newBPM !== sessionData.currentBPM) {
                 sessionData.currentBPM = newBPM;
@@ -500,10 +551,7 @@ async function updateSession() {
                 }
             }
             
-            // Update accuracy display
             updateAccuracyDisplay(currentAccuracy);
-            
-            // Update chart
             updateChart();
         }
     } catch (error) {
@@ -523,14 +571,13 @@ function updateAccuracyDisplay(accuracy) {
     progressBar.style.width = `${roundedAccuracy}%`;
     progressBar.textContent = `${roundedAccuracy}% Accuracy`;
     
-    // Update progress bar color based on accuracy
     progressBar.className = 'progress-bar';
     if (roundedAccuracy >= 80) {
-        progressBar.classList.add('bg-success');
+        progressBar.style.background = 'linear-gradient(90deg, var(--nb-emerald), #059669)';
     } else if (roundedAccuracy >= 60) {
-        progressBar.classList.add('bg-warning');
+        progressBar.style.background = 'linear-gradient(90deg, var(--nb-amber), #d97706)';
     } else {
-        progressBar.classList.add('bg-danger');
+        progressBar.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
     }
 }
 
@@ -541,7 +588,6 @@ function updateChart() {
     chart.data.labels.push(now);
     chart.data.datasets[0].data.push(sessionData.currentBPM);
     
-    // Keep only last 20 data points
     if (chart.data.labels.length > 20) {
         chart.data.labels.shift();
         chart.data.datasets[0].data.shift();
@@ -554,7 +600,6 @@ function changeBeatSound() {
     const selectedSound = document.getElementById('beatSoundSelect').value;
     sessionData.selectedBeatSound = selectedSound;
     
-    // Update audio engine if running
     if (sessionData.isRunning && typeof changeSoundType === 'function') {
         changeSoundType(selectedSound);
     }
